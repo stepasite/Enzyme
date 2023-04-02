@@ -5167,7 +5167,7 @@ public:
       nextTypeInfo.Return = TR.query(&call);
     }
 
-    // llvm::Optional<std::map<std::pair<Instruction*, std::string>, unsigned>>
+    // std::optional<std::map<std::pair<Instruction*, std::string>, unsigned>>
     // sub_index_map;
     // Optional<int> tapeIdx;
     // Optional<int> returnIdx;
@@ -9355,7 +9355,7 @@ public:
     CallInst *augmentcall = nullptr;
     Value *cachereplace = nullptr;
 
-    // llvm::Optional<std::map<std::pair<Instruction*, std::string>,
+    // std::optional<std::map<std::pair<Instruction*, std::string>,
     // unsigned>> sub_index_map;
     Optional<int> tapeIdx;
     Optional<int> returnIdx;

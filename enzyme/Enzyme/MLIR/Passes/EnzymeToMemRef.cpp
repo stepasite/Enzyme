@@ -199,7 +199,7 @@ struct LoweredCache {
         .getResult(0);
   }
 
-  static llvm::Optional<LoweredCache>
+  static std::optional<LoweredCache>
   getFromEnzymeCache(Location loc, TypeConverter *typeConverter,
                      Value enzymeCache, OpBuilder &b) {
     assert(enzymeCache.getType().isa<enzyme::CacheType>());
@@ -375,13 +375,13 @@ struct EnzymeToMemRefPass
     MLIRContext *context = &getContext();
     RewritePatternSet patterns(context);
     TypeConverter typeConverter;
-    typeConverter.addConversion([](Type type) -> llvm::Optional<Type> {
+    typeConverter.addConversion([](Type type) -> std::optional<Type> {
       if (type.isIntOrIndexOrFloat() || type.isa<MemRefType>())
         return type;
       return llvm::None;
     });
     typeConverter.addConversion(
-        [](enzyme::GradientType type) -> llvm::Optional<Type> {
+        [](enzyme::GradientType type) -> std::optional<Type> {
           return MemRefType::get({}, type.getBasetype());
         });
     typeConverter.addConversion(

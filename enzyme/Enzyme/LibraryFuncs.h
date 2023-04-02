@@ -220,7 +220,7 @@ static inline void zeroKnownAllocation(llvm::IRBuilder<> &bb,
   }
   if (funcName == "enzyme_allocator") {
     auto index = getAllocationIndexFromCall(orig);
-    allocSize = argValues[index.getValue()];
+    allocSize = argValues[index.value()];
   }
   Value *dst_arg = toZero;
 

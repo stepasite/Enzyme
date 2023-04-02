@@ -107,7 +107,7 @@ namespace {
 static void handleKnownFunctions(llvm::Function &F) {
   if (F.getName() == "memcmp") {
     F.addFnAttr(Attribute::ReadOnly);
-    F.addFnAttr(Attribute::ArgMemOnly);
+    F.setMemoryEffects(MemoryEffects::argMemOnly());
     F.addFnAttr(Attribute::NoUnwind);
     F.addFnAttr(Attribute::NoRecurse);
 #if LLVM_VERSION_MAJOR >= 9
@@ -132,7 +132,7 @@ static void handleKnownFunctions(llvm::Function &F) {
 #endif
   }
   if (F.getName() == "MPI_Irecv" || F.getName() == "PMPI_Irecv") {
-    F.addFnAttr(Attribute::InaccessibleMemOrArgMemOnly);
+    F.setMemoryEffects(MemoryEffects::inaccessibleOrArgMemOnly());
     F.addFnAttr(Attribute::NoUnwind);
     F.addFnAttr(Attribute::NoRecurse);
 #if LLVM_VERSION_MAJOR >= 9
@@ -148,7 +148,7 @@ static void handleKnownFunctions(llvm::Function &F) {
     F.addParamAttr(6, Attribute::WriteOnly);
   }
   if (F.getName() == "MPI_Isend" || F.getName() == "PMPI_Isend") {
-    F.addFnAttr(Attribute::InaccessibleMemOrArgMemOnly);
+    F.setMemoryEffects(MemoryEffects::inaccessibleOrArgMemOnly());
     F.addFnAttr(Attribute::NoUnwind);
     F.addFnAttr(Attribute::NoRecurse);
 #if LLVM_VERSION_MAJOR >= 9
@@ -165,7 +165,7 @@ static void handleKnownFunctions(llvm::Function &F) {
   }
   if (F.getName() == "MPI_Comm_rank" || F.getName() == "PMPI_Comm_rank" ||
       F.getName() == "MPI_Comm_size" || F.getName() == "PMPI_Comm_size") {
-    F.addFnAttr(Attribute::InaccessibleMemOrArgMemOnly);
+    F.setMemoryEffects(MemoryEffects::inaccessibleOrArgMemOnly());
     F.addFnAttr(Attribute::NoUnwind);
     F.addFnAttr(Attribute::NoRecurse);
 #if LLVM_VERSION_MAJOR >= 9
@@ -209,11 +209,11 @@ static void handleKnownFunctions(llvm::Function &F) {
   if (F.getName() == "omp_get_max_threads" ||
       F.getName() == "omp_get_thread_num") {
     F.addFnAttr(Attribute::ReadOnly);
-    F.addFnAttr(Attribute::InaccessibleMemOnly);
+    F.setMemoryEffects(MemoryEffects::inaccessibleMemOnly());
   }
   if (F.getName() == "frexp" || F.getName() == "frexpf" ||
       F.getName() == "frexpl") {
-    F.addFnAttr(Attribute::ArgMemOnly);
+    F.setMemoryEffects(<MemoryEffects::argMemOnly());
     F.addParamAttr(1, Attribute::WriteOnly);
   }
   if (F.getName() == "__fd_sincos_1" || F.getName() == "__fd_cos_1" ||
@@ -1889,14 +1889,14 @@ public:
             Fn->getName() == "omp_get_thread_num") {
           Fn->addFnAttr(Attribute::ReadOnly);
           CI->addAttribute(AttributeList::FunctionIndex, Attribute::ReadOnly);
-          Fn->addFnAttr(Attribute::InaccessibleMemOnly);
+          Fn->setMemoryEffects(MemoryEffects::inaccessibleMemOnly());
           CI->addAttribute(AttributeList::FunctionIndex,
-                           Attribute::InaccessibleMemOnly);
+                           Attribute::Memory);
         }
         if ((Fn->getName() == "cblas_ddot" || Fn->getName() == "cblas_sdot") &&
             Fn->isDeclaration()) {
           Fn->addFnAttr(Attribute::ReadOnly);
-          Fn->addFnAttr(Attribute::ArgMemOnly);
+          Fn->setMemoryEffects(MemoryEffects::argMemOnly());
           CI->addParamAttr(1, Attribute::ReadOnly);
           CI->addParamAttr(1, Attribute::NoCapture);
           CI->addParamAttr(3, Attribute::ReadOnly);
@@ -1904,7 +1904,7 @@ public:
         }
         if (Fn->getName() == "frexp" || Fn->getName() == "frexpf" ||
             Fn->getName() == "frexpl") {
-          CI->addAttribute(AttributeList::FunctionIndex, Attribute::ArgMemOnly);
+          CI->addAttribute(AttributeList::FunctionIndex, Attribute::Memory);
           CI->addParamAttr(1, Attribute::WriteOnly);
         }
         if (Fn->getName() == "__fd_sincos_1" || Fn->getName() == "__fd_cos_1" ||
@@ -1919,14 +1919,14 @@ public:
         }
         if (Fn->getName() == "f90io_fmtw_end" ||
             Fn->getName() == "f90io_unf_end") {
-          Fn->addFnAttr(Attribute::InaccessibleMemOnly);
+          Fn->setMemoryEffects(MemoryEffects::inaccessibleMemOnly());
           CI->addAttribute(AttributeList::FunctionIndex,
-                           Attribute::InaccessibleMemOnly);
+                           Attribute::Memory);
         }
         if (Fn->getName() == "f90io_open2003a") {
-          Fn->addFnAttr(Attribute::InaccessibleMemOrArgMemOnly);
+          Fn->setMemoryEffects(MemoryEffects::inaccessibleOrArgMemOnly());
           CI->addAttribute(AttributeList::FunctionIndex,
-                           Attribute::InaccessibleMemOrArgMemOnly);
+                           Attribute::Memory);
           for (size_t i : {0, 1, 2, 3, 4, 5, 6, 7, /*8, */ 9, 10, 11, 12, 13}) {
             if (i < num_args &&
                 CI->getArgOperand(i)->getType()->isPointerTy()) {
@@ -1942,9 +1942,9 @@ public:
           }
         }
         if (Fn->getName() == "f90io_fmtw_inita") {
-          Fn->addFnAttr(Attribute::InaccessibleMemOrArgMemOnly);
+          Fn->setMemoryEffects(MemoryEffects::inaccessibleOrArgMemOnly());
           CI->addAttribute(AttributeList::FunctionIndex,
-                           Attribute::InaccessibleMemOrArgMemOnly);
+                           Attribute::Memory);
           // todo more
           for (size_t i : {0, 2}) {
             if (i < num_args &&
@@ -1963,9 +1963,9 @@ public:
         }
 
         if (Fn->getName() == "f90io_unf_init") {
-          Fn->addFnAttr(Attribute::InaccessibleMemOrArgMemOnly);
+          Fn->setMemoryEffects(MemoryEffects::inaccessibleOrArgMemOnly());
           CI->addAttribute(AttributeList::FunctionIndex,
-                           Attribute::InaccessibleMemOrArgMemOnly);
+                           Attribute::Memory);
           // todo more
           for (size_t i : {0, 1, 2, 3}) {
             if (i < num_args &&
@@ -1984,9 +1984,9 @@ public:
         }
 
         if (Fn->getName() == "f90io_src_info03a") {
-          Fn->addFnAttr(Attribute::InaccessibleMemOrArgMemOnly);
+          Fn->setMemoryEffects(MemoryEffects::inaccessibleOrArgMemOnly());
           CI->addAttribute(AttributeList::FunctionIndex,
-                           Attribute::InaccessibleMemOrArgMemOnly);
+                           Attribute::Memory);
           // todo more
           for (size_t i : {0, 1}) {
             if (i < num_args &&
@@ -2010,9 +2010,9 @@ public:
             Fn->getName() == "f90io_fmt_writea" ||
             Fn->getName() == "f90io_unf_writea" ||
             Fn->getName() == "f90_pausea") {
-          Fn->addFnAttr(Attribute::InaccessibleMemOrArgMemOnly);
+          Fn->setMemoryEffects(MemoryEffects::inaccessibleOrArgMemOnly());
           CI->addAttribute(AttributeList::FunctionIndex,
-                           Attribute::InaccessibleMemOrArgMemOnly);
+                           Attribute::Memory);
           for (size_t i = 0; i < num_args; ++i) {
             if (CI->getArgOperand(i)->getType()->isPointerTy()) {
               CI->addParamAttr(i, Attribute::ReadOnly);
