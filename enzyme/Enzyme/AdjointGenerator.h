@@ -190,7 +190,7 @@ public:
         AL.addParamAttribute(DT->getContext(), 1, Attribute::AttrKind::NonNull);
 #if LLVM_VERSION_MAJOR >= 14
     AL = AL.addAttributeAtIndex(DT->getContext(), AttributeList::FunctionIndex,
-                                Attribute::AttrKind::ArgMemOnly);
+                                Attribute::AttrKind::Memory);
     AL = AL.addAttributeAtIndex(DT->getContext(), AttributeList::FunctionIndex,
                                 Attribute::AttrKind::NoUnwind);
     AL = AL.addAttributeAtIndex(DT->getContext(), AttributeList::FunctionIndex,
@@ -5857,7 +5857,7 @@ public:
           if (auto F = dyn_cast<Function>(derivcall))
 #endif
           {
-            F->addFnAttr(Attribute::ArgMemOnly);
+            F->setMemoryEffects(MemoryEffects::argMemOnly());
             F->addFnAttr(Attribute::ReadOnly);
             if (byRef) {
               F->addParamAttr(0, Attribute::ReadOnly);
@@ -5894,7 +5894,7 @@ public:
 #endif
 
               if (auto F = dyn_cast<Function>(callval)) {
-                F->addFnAttr(Attribute::ArgMemOnly);
+                F->setMemoryEffects(MemoryEffects::argMemOnly());
                 F->addFnAttr(Attribute::ReadOnly);
                 if (byRef) {
                   F->addParamAttr(0, Attribute::ReadOnly);
@@ -6401,7 +6401,7 @@ public:
           if (auto F = dyn_cast<Function>(derivcall))
 #endif
           {
-            F->addFnAttr(Attribute::ArgMemOnly);
+            F->setMemoryEffects(MemoryEffects::argMemOnly());
             if (byRef) {
               F->addParamAttr(0, Attribute::ReadOnly);
               F->addParamAttr(0, Attribute::NoCapture);
@@ -9013,7 +9013,7 @@ public:
         args.push_back(gutils->invertPointerM(call.getArgOperand(i), Builder2));
       }
 
-      Optional<int> tapeIdx;
+      std::optional<int> tapeIdx;
       if (subdata) {
         auto found = subdata->returns.find(AugmentedStruct::Tape);
         if (found != subdata->returns.end()) {
@@ -9021,7 +9021,7 @@ public:
         }
       }
       Value *tape = nullptr;
-      if (tapeIdx.hasValue()) {
+      if (tapeIdx.has_value()) {
 
         FunctionType *FT =
             cast<FunctionType>(subdata->fn->getType()->getPointerElementType());
@@ -9029,7 +9029,7 @@ public:
         tape = BuilderZ.CreatePHI(
             (tapeIdx == -1) ? FT->getReturnType()
                             : cast<StructType>(FT->getReturnType())
-                                  ->getElementType(tapeIdx.getValue()),
+                                  ->getElementType(tapeIdx.value()),
             1, "tapeArg");
 
         assert(!tape->getType()->isEmptyTy());
@@ -9357,9 +9357,9 @@ public:
 
     // std::optional<std::map<std::pair<Instruction*, std::string>,
     // unsigned>> sub_index_map;
-    Optional<int> tapeIdx;
-    Optional<int> returnIdx;
-    Optional<int> differetIdx;
+    std::optional<int> tapeIdx;
+    std::optional<int> returnIdx;
+    std::optional<int> differetIdx;
 
     if (modifyPrimal) {
 
@@ -9564,11 +9564,11 @@ public:
         if (!augmentcall->getType()->isVoidTy())
           augmentcall->setName(call.getName() + "_augmented");
 
-        if (tapeIdx.hasValue()) {
-          tape = (tapeIdx.getValue() == -1)
+        if (tapeIdx.has_value()) {
+          tape = (tapeIdx.value() == -1)
                      ? augmentcall
                      : BuilderZ.CreateExtractValue(
-                           augmentcall, {(unsigned)tapeIdx.getValue()},
+                           augmentcall, {(unsigned)tapeIdx.value()},
                            "subcache");
           if (tape->getType()->isEmptyTy()) {
             auto tt = tape->getType();
@@ -9585,10 +9585,10 @@ public:
           Value *dcall = nullptr;
           assert(returnIdx);
           assert(augmentcall);
-          dcall = (returnIdx.getValue() < 0)
+          dcall = (returnIdx.value() < 0)
                       ? augmentcall
                       : BuilderZ.CreateExtractValue(
-                            augmentcall, {(unsigned)returnIdx.getValue()});
+                            augmentcall, {(unsigned)returnIdx.value()});
           gutils->originalToNewFn[&call] = dcall;
           gutils->newToOriginalFn.erase(newCall);
           gutils->newToOriginalFn[dcall] = &call;
@@ -9656,11 +9656,11 @@ public:
           // assert(!tape);
           // assert(subdata);
           if (!tape) {
-            assert(tapeIdx.hasValue());
+            assert(tapeIdx.has_value());
             tape = BuilderZ.CreatePHI(
                 (tapeIdx == -1) ? FT->getReturnType()
                                 : cast<StructType>(FT->getReturnType())
-                                      ->getElementType(tapeIdx.getValue()),
+                                      ->getElementType(tapeIdx.value()),
                 1, "tapeArg");
           }
           tape = gutils->cacheForReverse(BuilderZ, tape,
@@ -9713,10 +9713,10 @@ public:
           Value *newip = nullptr;
           if (Mode == DerivativeMode::ReverseModeCombined ||
               Mode == DerivativeMode::ReverseModePrimal) {
-            newip = (differetIdx.getValue() < 0)
+            newip = (differetIdx.value() < 0)
                         ? augmentcall
                         : BuilderZ.CreateExtractValue(
-                              augmentcall, {(unsigned)differetIdx.getValue()},
+                              augmentcall, {(unsigned)differetIdx.value()},
                               call.getName() + "'ac");
             assert(newip->getType() == call.getType());
             placeholder->replaceAllUsesWith(newip);
@@ -12640,7 +12640,8 @@ public:
                                             /*tryLegalRecompute*/ false);
             auto freeCall = cast<CallInst>(
                 CallInst::CreateFree(tofree, Builder2.GetInsertBlock()));
-            Builder2.GetInsertBlock()->getInstList().push_back(freeCall);
+            //??? Builder2.GetInsertBlock()->getInstList().push_back(freeCall);
+            freeCall->insertInto(Builder2.GetInsertBlock(), Builder2.GetInsertBlock()->end());
           }
         }
       }
@@ -12679,7 +12680,8 @@ public:
             gutils->lookupM(load, Builder2, ValueToValueMapTy(),
                             /*tryLegal*/ false),
             Builder2.GetInsertBlock()));
-        Builder2.GetInsertBlock()->getInstList().push_back(freeCall);
+        //??? Builder2.GetInsertBlock()->getInstList().push_back(freeCall);
+        freeCall->insertInto(Builder2.GetInsertBlock(), Builder2.GetInsertBlock()->end());
       }
 
       return;

@@ -52,7 +52,6 @@
 #include "llvm/Analysis/MemorySSA.h"
 #include "llvm/Analysis/OptimizationRemarkEmitter.h"
 
-#include "llvm/Analysis/CFLSteensAliasAnalysis.h"
 #include "llvm/Analysis/DependenceAnalysis.h"
 #include "llvm/Analysis/TypeBasedAliasAnalysis.h"
 #include "llvm/CodeGen/UnreachableBlockElim.h"
@@ -119,10 +118,6 @@ cl::opt<bool> EnzymeInline("enzyme-inline", cl::init(false), cl::Hidden,
 
 cl::opt<bool> EnzymeNoAlias("enzyme-noalias", cl::init(false), cl::Hidden,
                             cl::desc("Force noalias of autodiff"));
-
-cl::opt<bool>
-    EnzymeAggressiveAA("enzyme-aggressive-aa", cl::init(false), cl::Hidden,
-                       cl::desc("Use more unstable but aggressive LLVM AA"));
 
 cl::opt<bool> EnzymeLowerGlobals(
     "enzyme-lower-globals", cl::init(false), cl::Hidden,
@@ -794,7 +789,7 @@ void PreProcessCache::ReplaceReallocs(Function *NewF, bool mem2reg) {
     CallInst *next = cast<CallInst>(CallInst::CreateMalloc(
         resize, newsize->getType(), Type::getInt8Ty(CI->getContext()), newsize,
         nullptr, (Function *)nullptr, ""));
-    resize->getInstList().push_back(next);
+    next->insertInto(resize, resize->end());
     B.SetInsertPoint(resize);
 
     auto volatile_arg = ConstantInt::getFalse(CI->getContext());
@@ -810,7 +805,7 @@ void PreProcessCache::ReplaceReallocs(Function *NewF, bool mem2reg) {
     mem->setCallingConv(memcpyF->getCallingConv());
 
     CallInst *freeCall = cast<CallInst>(CallInst::CreateFree(p, resize));
-    resize->getInstList().push_back(freeCall);
+    next->insertInto(resize, resize->end());
     B.SetInsertPoint(resize);
 
     B.CreateBr(nextBlock);
@@ -866,7 +861,7 @@ Function *CreateMPIWrapper(Function *F) {
     Attribute::NoFree,
     Attribute::NoSync,
 #endif
-    Attribute::InaccessibleMemOnly
+    Attribute::Memory
   };
   for (auto attr : attrs) {
 #if LLVM_VERSION_MAJOR >= 14
@@ -1165,9 +1160,6 @@ PreProcessCache::PreProcessCache() {
   // disable for now, consider enabling in future
   // FAM.registerPass([] { return SCEVAA(); });
 
-  if (EnzymeAggressiveAA)
-    FAM.registerPass([] { return CFLSteensAA(); });
-
   MAM.registerPass([&] { return FunctionAnalysisManagerModuleProxy(FAM); });
   FAM.registerPass([&] { return ModuleAnalysisManagerFunctionProxy(MAM); });
 
@@ -1180,8 +1172,7 @@ PreProcessCache::PreProcessCache() {
 
     // broken for different reasons
     // AM.registerFunctionAnalysis<SCEVAA>();
-    if (EnzymeAggressiveAA)
-      AM.registerFunctionAnalysis<CFLSteensAA>();
+
     return AM;
   });
 
@@ -1701,7 +1692,7 @@ Function *PreProcessCache::preprocessForClone(Function *F,
 
     {
 #if LLVM_VERSION_MAJOR >= 14 && !defined(FLANG)
-      auto PA = SROAPass().run(*NewF, FAM);
+      auto PA = SROAPass(llvm::SROAOptions::PreserveCFG).run(*NewF, FAM);
 #else
       auto PA = SROA().run(*NewF, FAM);
 #endif
@@ -1712,7 +1703,7 @@ Function *PreProcessCache::preprocessForClone(Function *F,
 
     {
 #if LLVM_VERSION_MAJOR >= 14 && !defined(FLANG)
-      auto PA = SROAPass().run(*NewF, FAM);
+      auto PA = SROAPass(llvm::SROAOptions::PreserveCFG).run(*NewF, FAM);
 #else
       auto PA = SROA().run(*NewF, FAM);
 #endif
@@ -2368,7 +2359,7 @@ void PreProcessCache::optimizeIntermediate(Function *F) {
   GVN().run(*F, FAM);
 #endif
 #if LLVM_VERSION_MAJOR >= 14 && !defined(FLANG)
-  SROAPass().run(*F, FAM);
+  SROAPass(llvm::SROAOptions::PreserveCFG).run(*F, FAM);
 #else
   SROA().run(*F, FAM);
 #endif

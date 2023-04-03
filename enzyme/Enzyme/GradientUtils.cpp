@@ -496,10 +496,10 @@ DebugLoc GradientUtils::getNewFromOriginal(const DebugLoc L) const {
     return L;
   assert(originalToNewFn.hasMD());
   auto opt = originalToNewFn.getMappedMD(L.getAsMDNode());
-  if (!opt.hasValue())
+  if (!opt.has_value())
     return L;
-  assert(opt.hasValue());
-  return DebugLoc(cast<MDNode>(*opt.getPointer()));
+  assert(opt.has_value());
+  return DebugLoc(cast<MDNode>(opt.value()));
 }
 
 Value *GradientUtils::getNewFromOriginal(const Value *originst) const {

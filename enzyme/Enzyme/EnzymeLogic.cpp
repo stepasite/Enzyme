@@ -3988,7 +3988,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
             Constant::getNullValue(g.getValueType()), &g);
 #if LLVM_VERSION_MAJOR >= 11
         if (g.getAlign())
-          store->setAlignment(g.getAlign().getValue());
+          store->setAlignment(g.getAlign().value());
 #elif LLVM_VERSION_MAJOR >= 10
         store->setAlignment(Align(g.getAlignment()));
 #else

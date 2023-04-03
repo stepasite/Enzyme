@@ -213,7 +213,7 @@ static void handleKnownFunctions(llvm::Function &F) {
   }
   if (F.getName() == "frexp" || F.getName() == "frexpf" ||
       F.getName() == "frexpl") {
-    F.setMemoryEffects(<MemoryEffects::argMemOnly());
+    F.setMemoryEffects(MemoryEffects::argMemOnly());
     F.addParamAttr(1, Attribute::WriteOnly);
   }
   if (F.getName() == "__fd_sincos_1" || F.getName() == "__fd_cos_1" ||
@@ -1797,7 +1797,8 @@ public:
         II->getUnwindDest()->removePredecessor(&BB);
 
         // Remove the invoke instruction now.
-        BB.getInstList().erase(II);
+        auto termIt = BB.end();
+        BB.erase(--termIt, BB.end());
         Changed = true;
       }
 
@@ -2586,7 +2587,7 @@ llvmGetPassPluginInfo() {
               FunctionPassManager OptimizerPM2;
 #if LLVM_VERSION_MAJOR >= 14
               OptimizerPM.addPass(llvm::GVNPass());
-              OptimizerPM.addPass(llvm::SROAPass());
+              OptimizerPM.addPass(llvm::SROAPass(llvm::SROAOptions::PreserveCFG));
 #else
               OptimizerPM.addPass(llvm::GVN());
               OptimizerPM.addPass(llvm::SROA());
@@ -2597,7 +2598,7 @@ llvmGetPassPluginInfo() {
               MPM.addPass(PreserveNVVMNewPM(/*Begin*/ false));
 #if LLVM_VERSION_MAJOR >= 14
               OptimizerPM2.addPass(llvm::GVNPass());
-              OptimizerPM2.addPass(llvm::SROAPass());
+              OptimizerPM2.addPass(llvm::SROAPass(llvm::SROAOptions::PreserveCFG));
 #else
               OptimizerPM2.addPass(llvm::GVN());
               OptimizerPM2.addPass(llvm::SROA());
