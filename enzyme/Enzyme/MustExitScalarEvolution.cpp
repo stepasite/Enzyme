@@ -230,8 +230,13 @@ MustExitScalarEvolution::computeExitLimitFromCondImpl(
           !isa<SCEVCouldNotCompute>(BECount))
         MaxBECount = getConstant(getUnsignedRangeMax(BECount));
 
+#if LLVM_VERSION_MAJOR >= 16
       return ExitLimit(BECount, MaxBECount, MaxBECount, false,
                        {&EL0.Predicates, &EL1.Predicates});
+#else
+      return ExitLimit(BECount, MaxBECount, false,
+                       {&EL0.Predicates, &EL1.Predicates});
+#endif
     }
     if (BO->getOpcode() == Instruction::Or) {
       // Recurse on the operands of the or.
@@ -1210,8 +1215,13 @@ ScalarEvolution::ExitLimit MustExitScalarEvolution::howManyLessThans(
   if (!isLoopInvariant(RHS, L)) {
     const SCEV *MaxBECount = computeMaxBECountForLT(
         Start, Stride, RHS, getTypeSizeInBits(LHS->getType()), IsSigned);
+#if LLVM_VERSION_MAJOR >= 16
     return ExitLimit(getCouldNotCompute() /* ExactNotTaken */, MaxBECount,
                      MaxBECount, false /*MaxOrZero*/, Predicates);
+#else
+    return ExitLimit(getCouldNotCompute() /* ExactNotTaken */, MaxBECount,
+                     false /*MaxOrZero*/, Predicates);
+#endif
   }
 
   // We use the expression (max(End,Start)-Start)/Stride to describe the
@@ -1394,8 +1404,11 @@ ScalarEvolution::ExitLimit MustExitScalarEvolution::howManyLessThans(
   if (isa<SCEVCouldNotCompute>(MaxBECount) &&
       !isa<SCEVCouldNotCompute>(BECount))
     MaxBECount = getConstant(getUnsignedRangeMax(BECount));
-
+#if LLVM_VERSION_MAJOR >= 16
   return ExitLimit(BECount, MaxBECount, MaxBECount, MaxOrZero, Predicates);
+#else
+  return ExitLimit(BECount, MaxBECount, MaxOrZero, Predicates);
+#endif
 }
 #else
 ScalarEvolution::ExitLimit MustExitScalarEvolution::howManyLessThans(
