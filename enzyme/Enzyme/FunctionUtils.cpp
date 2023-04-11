@@ -52,6 +52,9 @@
 #include "llvm/Analysis/MemorySSA.h"
 #include "llvm/Analysis/OptimizationRemarkEmitter.h"
 
+#if LLVM_VERSION_MAJOR < 16
+#include "llvm/Analysis/CFLSteensAliasAnalysis.h"
+#endif
 #include "llvm/Analysis/DependenceAnalysis.h"
 #include "llvm/Analysis/TypeBasedAliasAnalysis.h"
 #include "llvm/CodeGen/UnreachableBlockElim.h"
@@ -118,7 +121,11 @@ cl::opt<bool> EnzymeInline("enzyme-inline", cl::init(false), cl::Hidden,
 
 cl::opt<bool> EnzymeNoAlias("enzyme-noalias", cl::init(false), cl::Hidden,
                             cl::desc("Force noalias of autodiff"));
-
+#if LLVM_VERSION_MAJOR < 16
+cl::opt<bool>
+    EnzymeAggressiveAA("enzyme-aggressive-aa", cl::init(false), cl::Hidden,
+                       cl::desc("Use more unstable but aggressive LLVM AA"));
+#endif
 cl::opt<bool> EnzymeLowerGlobals(
     "enzyme-lower-globals", cl::init(false), cl::Hidden,
     cl::desc("Lower globals to locals assuming the global values are not "
@@ -789,7 +796,11 @@ void PreProcessCache::ReplaceReallocs(Function *NewF, bool mem2reg) {
     CallInst *next = cast<CallInst>(CallInst::CreateMalloc(
         resize, newsize->getType(), Type::getInt8Ty(CI->getContext()), newsize,
         nullptr, (Function *)nullptr, ""));
+#if LLVM_VERSION_MAJOR >= 16
     next->insertInto(resize, resize->end());
+#else
+    resize->getInstList().push_back(next);
+#endif
     B.SetInsertPoint(resize);
 
     auto volatile_arg = ConstantInt::getFalse(CI->getContext());
@@ -805,7 +816,11 @@ void PreProcessCache::ReplaceReallocs(Function *NewF, bool mem2reg) {
     mem->setCallingConv(memcpyF->getCallingConv());
 
     CallInst *freeCall = cast<CallInst>(CallInst::CreateFree(p, resize));
+#if LLVM_VERSION_MAJOR >= 16
     next->insertInto(resize, resize->end());
+#else
+    resize->getInstList().push_back(next);
+#endif
     B.SetInsertPoint(resize);
 
     B.CreateBr(nextBlock);
@@ -861,7 +876,11 @@ Function *CreateMPIWrapper(Function *F) {
     Attribute::NoFree,
     Attribute::NoSync,
 #endif
+#if LLVM_VERSION_MAJOR >= 16
     Attribute::Memory
+#else
+    Attribute::InaccessibleMemOnly
+#endif
   };
   for (auto attr : attrs) {
 #if LLVM_VERSION_MAJOR >= 14
@@ -1691,8 +1710,10 @@ Function *PreProcessCache::preprocessForClone(Function *F,
     }
 
     {
-#if LLVM_VERSION_MAJOR >= 14 && !defined(FLANG)
+#if LLVM_VERSION_MAJOR >= 16 && !defined(FLANG)
       auto PA = SROAPass(llvm::SROAOptions::PreserveCFG).run(*NewF, FAM);
+#elif LLVM_VERSION_MAJOR >= 14 && !defined(FLANG)
+      auto PA = SROAPass().run(*NewF, FAM);
 #else
       auto PA = SROA().run(*NewF, FAM);
 #endif
@@ -1702,8 +1723,10 @@ Function *PreProcessCache::preprocessForClone(Function *F,
     ReplaceReallocs(NewF);
 
     {
-#if LLVM_VERSION_MAJOR >= 14 && !defined(FLANG)
+#if LLVM_VERSION_MAJOR >= 16 && !defined(FLANG)
       auto PA = SROAPass(llvm::SROAOptions::PreserveCFG).run(*NewF, FAM);
+#elif LLVM_VERSION_MAJOR >= 14 && !defined(FLANG)
+      auto PA = SROAPass().run(*NewF, FAM);
 #else
       auto PA = SROA().run(*NewF, FAM);
 #endif
@@ -2358,8 +2381,10 @@ void PreProcessCache::optimizeIntermediate(Function *F) {
 #else
   GVN().run(*F, FAM);
 #endif
-#if LLVM_VERSION_MAJOR >= 14 && !defined(FLANG)
+#if LLVM_VERSION_MAJOR >= 16 && !defined(FLANG)
   SROAPass(llvm::SROAOptions::PreserveCFG).run(*F, FAM);
+#elif LLVM_VERSION_MAJOR >= 14 && !defined(FLANG)
+  SROAPass().run(*F, FAM);
 #else
   SROA().run(*F, FAM);
 #endif

@@ -807,9 +807,14 @@ void DiffeGradientUtils::addToInvertedPtrDiffe(Instruction *orig,
           MaybeAlign alignv = align;
           if (alignv) {
             if (start != 0) {
-              assert(alignv.value().value() != 0);
               // todo make better alignment calculation
+#if LLVM_VERSION_MAJOR >= 16
+              assert(alignv.value().value() != 0);
               if (start % alignv.value().value() != 0) {
+#else
+              assert(alignv.getValue().value() != 0);
+              if (start % alignv.getValue().value() != 0) {
+#endif
                 alignv = Align(1);
               }
             }
@@ -821,7 +826,7 @@ void DiffeGradientUtils::addToInvertedPtrDiffe(Instruction *orig,
           AtomicRMWInst *rmw = BuilderM.CreateAtomicRMW(
               op, vptr, vdif, AtomicOrdering::Monotonic, SyncScope::System);
           if (align) {
-            auto alignv = align.value().value();
+            auto alignv = align.getValue().value();
             if (start != 0) {
               assert(alignv != 0);
               // todo make better alignment calculation
@@ -844,9 +849,14 @@ void DiffeGradientUtils::addToInvertedPtrDiffe(Instruction *orig,
         MaybeAlign alignv = align;
         if (alignv) {
           if (start != 0) {
-            assert(alignv.value().value() != 0);
             // todo make better alignment calculation
+#if LLVM_VERSION_MAJOR >= 16
+            assert(alignv.value().value() != 0);
             if (start % alignv.value().value() != 0) {
+#else
+            assert(alignv.getValue().value() != 0);
+            if (start % alignv.getValue().value() != 0) {
+#endif
               alignv = Align(1);
             }
           }
@@ -857,7 +867,7 @@ void DiffeGradientUtils::addToInvertedPtrDiffe(Instruction *orig,
         AtomicRMWInst *rmw = BuilderM.CreateAtomicRMW(
             op, ptr, dif, AtomicOrdering::Monotonic, SyncScope::System);
         if (align) {
-          auto alignv = align.value().value();
+          auto alignv = align.getValue().value();
           if (start != 0) {
             assert(alignv != 0);
             // todo make better alignment calculation
@@ -927,8 +937,10 @@ void DiffeGradientUtils::addToInvertedPtrDiffe(Instruction *orig,
       }
 
       if (align) {
-#if LLVM_VERSION_MAJOR >= 10
+#if LLVM_VERSION_MAJOR >= 16
         auto alignv = align ? align.value().value() : 0;
+#elif LLVM_VERSION_MAJOR >= 10
+        auto alignv = align ? align.getValue().value() : 0;
 #else
         auto alignv = align;
 #endif

@@ -189,8 +189,13 @@ public:
     AL =
         AL.addParamAttribute(DT->getContext(), 1, Attribute::AttrKind::NonNull);
 #if LLVM_VERSION_MAJOR >= 14
+  #if LLVM_VERSION_MAJOR >= 16
     AL = AL.addAttributeAtIndex(DT->getContext(), AttributeList::FunctionIndex,
                                 Attribute::AttrKind::Memory);
+  #else
+    AL = AL.addAttributeAtIndex(DT->getContext(), AttributeList::FunctionIndex,
+                                Attribute::AttrKind::ArgMemOnly);
+  #endif
     AL = AL.addAttributeAtIndex(DT->getContext(), AttributeList::FunctionIndex,
                                 Attribute::AttrKind::NoUnwind);
     AL = AL.addAttributeAtIndex(DT->getContext(), AttributeList::FunctionIndex,
@@ -5857,7 +5862,11 @@ public:
           if (auto F = dyn_cast<Function>(derivcall))
 #endif
           {
+#if LLVM_VERSION_MAJOR >= 16
             F->setMemoryEffects(MemoryEffects::argMemOnly());
+#else
+            F->addFnAttr(Attribute::ArgMemOnly);
+#endif
             F->addFnAttr(Attribute::ReadOnly);
             if (byRef) {
               F->addParamAttr(0, Attribute::ReadOnly);
@@ -5894,7 +5903,11 @@ public:
 #endif
 
               if (auto F = dyn_cast<Function>(callval)) {
+#if LLVM_VERSION_MAJOR >= 16
                 F->setMemoryEffects(MemoryEffects::argMemOnly());
+#else
+                F->addFnAttr(Attribute::ArgMemOnly);
+#endif
                 F->addFnAttr(Attribute::ReadOnly);
                 if (byRef) {
                   F->addParamAttr(0, Attribute::ReadOnly);
@@ -6401,7 +6414,11 @@ public:
           if (auto F = dyn_cast<Function>(derivcall))
 #endif
           {
+#if LLVM_VERSION_MAJOR >= 16
             F->setMemoryEffects(MemoryEffects::argMemOnly());
+#else
+            F->addFnAttr(Attribute::ArgMemOnly);
+#endif
             if (byRef) {
               F->addParamAttr(0, Attribute::ReadOnly);
               F->addParamAttr(0, Attribute::NoCapture);
@@ -9012,8 +9029,11 @@ public:
 
         args.push_back(gutils->invertPointerM(call.getArgOperand(i), Builder2));
       }
-
+#if LLVM_VERSION_MAJOR >= 16
       std::optional<int> tapeIdx;
+#else
+      Optional<int> tapeIdx;
+#endif
       if (subdata) {
         auto found = subdata->returns.find(AugmentedStruct::Tape);
         if (found != subdata->returns.end()) {
@@ -9021,7 +9041,11 @@ public:
         }
       }
       Value *tape = nullptr;
+#if LLVM_VERSION_MAJOR >= 16      
       if (tapeIdx.has_value()) {
+#else
+      if (tapeIdx.hasValue()) {
+#endif
 
         FunctionType *FT =
             cast<FunctionType>(subdata->fn->getType()->getPointerElementType());
@@ -9357,10 +9381,15 @@ public:
 
     // std::optional<std::map<std::pair<Instruction*, std::string>,
     // unsigned>> sub_index_map;
+#if LLVM_VERSION_MAJOR >= 16
     std::optional<int> tapeIdx;
     std::optional<int> returnIdx;
     std::optional<int> differetIdx;
-
+#else
+    Optional<int> tapeIdx;
+    Optional<int> returnIdx;
+    Optional<int> differetIdx;
+#endif
     if (modifyPrimal) {
 
       Value *newcalled = nullptr;
@@ -9564,7 +9593,11 @@ public:
         if (!augmentcall->getType()->isVoidTy())
           augmentcall->setName(call.getName() + "_augmented");
 
+#if LLVM_VERSION_MAJOR >= 16
         if (tapeIdx.has_value()) {
+#else
+        if (tapeIdx.hasValue()) {
+#endif
           tape = (tapeIdx.value() == -1)
                      ? augmentcall
                      : BuilderZ.CreateExtractValue(
@@ -9656,7 +9689,11 @@ public:
           // assert(!tape);
           // assert(subdata);
           if (!tape) {
+#if LLVM_VERSION_MAJOR >= 16
             assert(tapeIdx.has_value());
+#else
+            assert(tapeIdx.hasValue());
+#endif
             tape = BuilderZ.CreatePHI(
                 (tapeIdx == -1) ? FT->getReturnType()
                                 : cast<StructType>(FT->getReturnType())
@@ -12640,8 +12677,11 @@ public:
                                             /*tryLegalRecompute*/ false);
             auto freeCall = cast<CallInst>(
                 CallInst::CreateFree(tofree, Builder2.GetInsertBlock()));
-            //??? Builder2.GetInsertBlock()->getInstList().push_back(freeCall);
+#if LLVM_VERSION_MAJOR >= 16
             freeCall->insertInto(Builder2.GetInsertBlock(), Builder2.GetInsertBlock()->end());
+#else
+            Builder2.GetInsertBlock()->getInstList().push_back(freeCall);
+#endif
           }
         }
       }
@@ -12680,8 +12720,11 @@ public:
             gutils->lookupM(load, Builder2, ValueToValueMapTy(),
                             /*tryLegal*/ false),
             Builder2.GetInsertBlock()));
-        //??? Builder2.GetInsertBlock()->getInstList().push_back(freeCall);
+#if LLVM_VERSION_MAJOR >= 16
         freeCall->insertInto(Builder2.GetInsertBlock(), Builder2.GetInsertBlock()->end());
+#else
+        Builder2.GetInsertBlock()->getInstList().push_back(freeCall);
+#endif
       }
 
       return;

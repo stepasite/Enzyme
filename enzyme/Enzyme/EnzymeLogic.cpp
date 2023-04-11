@@ -3986,9 +3986,12 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
         }
         auto store = entryBuilder.CreateStore(
             Constant::getNullValue(g.getValueType()), &g);
-#if LLVM_VERSION_MAJOR >= 11
+#if LLVM_VERSION_MAJOR >= 16
         if (g.getAlign())
           store->setAlignment(g.getAlign().value());
+#elif LLVM_VERSION_MAJOR >= 11
+        if (g.getAlign())
+          store->setAlignment(g.getAlign().getValue());
 #elif LLVM_VERSION_MAJOR >= 10
         store->setAlignment(Align(g.getAlignment()));
 #else
