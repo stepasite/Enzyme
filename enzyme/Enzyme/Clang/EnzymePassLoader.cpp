@@ -28,12 +28,13 @@
 #if LLVM_VERSION_MAJOR < 16
 
 #include "llvm/IR/LegacyPassManager.h"
+#include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
+#include "llvm/Transforms/Scalar.h"
+#include "llvm/Transforms/Scalar/GVN.h"
 
 #include "../Enzyme.h"
 #include "../PreserveNVVM.h"
-
-#include "llvm/LinkAllPasses.h"
 
 using namespace llvm;
 
