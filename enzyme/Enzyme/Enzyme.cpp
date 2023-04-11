@@ -2663,9 +2663,12 @@ llvmGetPassPluginInfo() {
               MPM.addPass(PreserveNVVMNewPM(/*Begin*/ true));
               FunctionPassManager OptimizerPM;
               FunctionPassManager OptimizerPM2;
-#if LLVM_VERSION_MAJOR >= 14
+#if LLVM_VERSION_MAJOR >= 16
               OptimizerPM.addPass(llvm::GVNPass());
               OptimizerPM.addPass(llvm::SROAPass(llvm::SROAOptions::PreserveCFG));
+#elif LLVM_VERSION_MAJOR >= 14
+              OptimizerPM.addPass(llvm::GVNPass());
+              OptimizerPM.addPass(llvm::SROAPass());
 #else
               OptimizerPM.addPass(llvm::GVN());
               OptimizerPM.addPass(llvm::SROA());
@@ -2674,9 +2677,12 @@ llvmGetPassPluginInfo() {
                   createModuleToFunctionPassAdaptor(std::move(OptimizerPM)));
               MPM.addPass(EnzymeNewPM(/*PostOpt=*/true));
               MPM.addPass(PreserveNVVMNewPM(/*Begin*/ false));
-#if LLVM_VERSION_MAJOR >= 14
+#if LLVM_VERSION_MAJOR >= 16
               OptimizerPM2.addPass(llvm::GVNPass());
               OptimizerPM2.addPass(llvm::SROAPass(llvm::SROAOptions::PreserveCFG));
+#elif LLVM_VERSION_MAJOR >= 14
+              OptimizerPM2.addPass(llvm::GVNPass());
+              OptimizerPM2.addPass(llvm::SROAPass());
 #else
               OptimizerPM2.addPass(llvm::GVN());
               OptimizerPM2.addPass(llvm::SROA());

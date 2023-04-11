@@ -1179,6 +1179,11 @@ PreProcessCache::PreProcessCache() {
   // disable for now, consider enabling in future
   // FAM.registerPass([] { return SCEVAA(); });
 
+#if LLVM_VERSION_MAJOR < 16
+  if (EnzymeAggressiveAA)
+    FAM.registerPass([] { return CFLSteensAA(); });
+#endif
+
   MAM.registerPass([&] { return FunctionAnalysisManagerModuleProxy(FAM); });
   FAM.registerPass([&] { return ModuleAnalysisManagerFunctionProxy(MAM); });
 
@@ -1191,6 +1196,11 @@ PreProcessCache::PreProcessCache() {
 
     // broken for different reasons
     // AM.registerFunctionAnalysis<SCEVAA>();
+
+#if LLVM_VERSION_MAJOR < 16
+    if (EnzymeAggressiveAA)
+      AM.registerFunctionAnalysis<CFLSteensAA>();
+#endif
 
     return AM;
   });
