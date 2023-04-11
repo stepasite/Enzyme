@@ -9053,7 +9053,11 @@ public:
         tape = BuilderZ.CreatePHI(
             (tapeIdx == -1) ? FT->getReturnType()
                             : cast<StructType>(FT->getReturnType())
+#if LLVM_VERSION_MAJOR >= 16
                                   ->getElementType(tapeIdx.value()),
+#else
+                                  ->getElementType(tapeIdx.getValue()),
+#endif
             1, "tapeArg");
 
         assert(!tape->getType()->isEmptyTy());
@@ -9595,13 +9599,18 @@ public:
 
 #if LLVM_VERSION_MAJOR >= 16
         if (tapeIdx.has_value()) {
+          tape = (tapeIdx.value() == -1)
 #else
         if (tapeIdx.hasValue()) {
+          tape = (tapeIdx.getValue() == -1)
 #endif
-          tape = (tapeIdx.value() == -1)
                      ? augmentcall
                      : BuilderZ.CreateExtractValue(
+#if LLVM_VERSION_MAJOR >= 16
                            augmentcall, {(unsigned)tapeIdx.value()},
+#else
+                           augmentcall, {(unsigned)tapeIdx.getValue()},
+#endif
                            "subcache");
           if (tape->getType()->isEmptyTy()) {
             auto tt = tape->getType();
