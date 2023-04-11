@@ -1969,7 +1969,7 @@ public:
 #else
           Fn->addFnAttr(Attribute::InaccessibleMemOnly);
           CI->addAttribute(AttributeList::FunctionIndex,
-                           Attribute::InaccessibleMemOrArgMemOnly);
+                           Attribute::InaccessibleMemOnly);
 #endif
         }
         if (Fn->getName() == "f90io_open2003a") {
