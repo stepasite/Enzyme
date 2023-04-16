@@ -6,7 +6,8 @@
 ; Function Attrs: nounwind
 declare %struct.Gradients @__enzyme_fwddiff(double (double)*, ...)
 
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -O3 -S | FileCheck %s
+; RUN: if [ %llvmver -lt 16 ]; then %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -O3 -S | FileCheck %s; fi
+; RUN: if [ %llvmver -ge 16 ]; then %opt < %s %newLoadEnzyme -passes="enzyme" -enzyme-preopt=false -O3 -S | FileCheck %s; fi
 
 ; Function Attrs: nounwind readnone uwtable
 define double @tester(double %x) {
