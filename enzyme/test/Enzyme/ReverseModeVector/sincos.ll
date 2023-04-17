@@ -1,4 +1,5 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -sroa -simplifycfg -instsimplify -enzyme-preopt=false -S | FileCheck %s
+; RUN: if [ %llvmver -lt 16 ]; then %opt < %s %loadEnzyme -enzyme -sroa -simplifycfg -instsimplify -enzyme-preopt=false -S | FileCheck %s; fi
+; RUN: if [ %llvmver -ge 16 ]; then %opt < %s %newLoadEnzyme -passes="enzyme,function(sroa,simplifycfg,instsimplify)" -enzyme-preopt=false -S | FileCheck %s; fi
 
 ; Function Attrs: nounwind readnone uwtable
 define [2 x double] @meta(double %x) {
