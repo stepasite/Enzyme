@@ -55,6 +55,7 @@ newPM = ((" --enable-new-pm=1" if int(config.llvm_ver) in (12,13) else "")
                                  + (" --enzyme-attributor=0" if int(config.llvm_ver) >= 13 else ""))
 config.substitutions.append(('%loadEnzyme', oldPM if int(config.llvm_ver) < 16 else newPM))
 config.substitutions.append(('%newLoadEnzyme', newPM))
+config.substitutions.append(('%enzyme', ('-enzyme' if int(config.llvm_ver) < 16 else '-passes="enzyme"')))
 config.substitutions.append(('%simplifycfg', ("simplify-cfg" if int(config.llvm_ver) < 11 else "simplifycfg")))
 
 config.substitutions.append(('%loadBC', ''
